@@ -22,63 +22,36 @@ async function writeToFile(directory, filename, content){
   await writeFile(path.join(directory, filename), content, {encoding: 'utf-8'});
 }
 
-async function basicPage(context, fundCode){
-  const page = await context.newPage();
-  await page.goto(`http://fundf10.eastmoney.com/jbgk_${fundCode}.html`);
-  await sleep(1);
+async function basicElementFinder(page){
   const html = '<table class="basic">' + await page.innerHTML('table.info') + '</table>';
-
-  await writeToFile(path.join(ROOT, 'basic'), `${fundCode}.html`, html);
-  await sleep(0.5);
-  page.close();
+  return html;
 }
 
-async function historyPage(context, fundCode){
-  const page = await context.newPage();
-  await page.goto(`http://fundf10.eastmoney.com/jdzf_${fundCode}.html`);
-  await sleep(1);
-  await page.mouse.wheel(0, 689);
-  await sleep(0.2);
+async function historyElementFinder(page){
   await page.waitForSelector('#jdzftable div.jdzfnew');
   const html = await page.innerHTML('#jdzftable');
-  await writeToFile(path.join(ROOT, 'history'), `${fundCode}.html`, html);
-  await sleep(1);
-  page.close();
+
+  return html;
 }
 
-async function managerPage(context, fundCode){
-  const page = await context.newPage();
-  await page.goto(`http://fundf10.eastmoney.com/jjjl_${fundCode}.html`);
-  await sleep(1);
+async function managerElementFinder(page){
   const tables = await page.$$('table.comm.jloff');
 
   const managerInfo = await tables[0].innerHTML();
   const managementInfo = await tables[1].innerHTML();
-  const html = `<table class="manager">${managerInfo}</table><table class="management">${managementInfo}</table>`
-  await writeToFile(path.join(ROOT, 'manager'), `${fundCode}.html`, html);
-  await sleep(0.5);
+  const html = `<table class="manager">${managerInfo}</table><table class="management">${managementInfo}</table>`;
 
-  page.close();
+  return html;
 }
 
-async function scorePage(context, fundCode){
-  const page = await context.newPage();
-  await page.goto(`http://fundf10.eastmoney.com/jjpj_${fundCode}.html`);
+async function scoreElementFinder(page){
   await page.waitForSelector('#fundgradetable tbody tr');
-  await sleep(1);
   const html = '<table class="score">' + await page.innerHTML('#fundgradetable') + '</table>';
 
-  await writeToFile(path.join(ROOT, 'score'), `${fundCode}.html`, html);
-  await sleep(0.5);
-
-  page.close();
+  return html;
 }
 
-async function riskPage(context, fundCode){
-  const page = await context.newPage();
-  await page.goto(`http://fundf10.eastmoney.com/tsdata_${fundCode}.html`);
-
-  await sleep(1);
+async function riskElementFinder(page){
   const html = '<table class="risk">' + await page.innerHTML('table.fxtb') + '</table>';
 
   const indexFundSpecial = await page.$('#jjzsfj table.fxtb');
@@ -88,16 +61,46 @@ async function riskPage(context, fundCode){
     html2 = '<table class="track">' + await page.innerHTML('#jjzsfj table.fxtb') + '</table>';
   }
 
-  await writeToFile(path.join(ROOT, 'risk'), `${fundCode}.html`, html + html2);
-  await sleep(0.5);
+  return html + html2;
+}
 
+const crawlers = [{
+  type: 'basic',
+  url: _.template('http://fundf10.eastmoney.com/jbgk_<%=fundCode%>.html'),
+  elementFinder: basicElementFinder
+}, {
+  type: 'history',
+  url: _.template('http://fundf10.eastmoney.com/jdzf_<%=fundCode%>.html'),
+  elementFinder: historyElementFinder
+}, {
+  type: 'manager',
+  url: _.template('http://fundf10.eastmoney.com/jjjl_<%=fundCode%>.html'),
+  elementFinder: managerElementFinder
+}, {
+  type: 'score',
+  url: _.template('http://fundf10.eastmoney.com/jjpj_<%=fundCode%>.html'),
+  elementFinder: scoreElementFinder
+}, {
+  type: 'risk',
+  url: _.template('http://fundf10.eastmoney.com/tsdata_<%=fundCode%>.html'),
+  elementFinder: riskElementFinder
+}];
+
+async function execute(crawler, context, fundCode){
+  const page = await context.newPage();
+  await page.goto(crawler.url({fundCode}));
+  await sleep(1);
+
+  const result = await crawler.elementFinder(page);
+
+  await writeToFile(path.join(ROOT, crawler.type), `${fundCode}.html`, result);
+  await sleep(0.5);
   page.close();
 }
 
 async function run() {
   const browser = await chromium.launch({headless: false, slowMo: 50});
   const context = await browser.newContext({
-    // javaScriptEnabled: false,
     screen: {
       width: 1920,
       height: 1080
@@ -113,11 +116,11 @@ async function run() {
   for(const fundCode of config.watchedFunds){
     console.log(index + '/' + total);
     index++;
-    await basicPage(context, fundCode);
-    await historyPage(context, fundCode);
-    await managerPage(context, fundCode);
-    await scorePage(context, fundCode);
-    await riskPage(context, fundCode);
+
+    for(const crawler of crawlers){
+      await execute(crawler, context, fundCode);
+    }
+
     await sleep(1);
   }
 
@@ -126,5 +129,4 @@ async function run() {
 
 module.exports = {
   run
-}
-
+};
