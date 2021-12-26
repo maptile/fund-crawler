@@ -1,5 +1,7 @@
 # 天天基金抓取器
 
+This tool is used to crawl [ttfund](https://1234567.com.cn) mutual fund data based on which fund you are interested with(via config file).
+
 ## 特点
 
 - 可配置需要抓取的基金代码列表
