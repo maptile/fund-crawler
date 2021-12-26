@@ -121,10 +121,9 @@ async function run(options) {
   };
 
   options = _.assign(defaultOptions, options);
-  console.log(options);
+
   options.headless = strToBool(options.headless);
 
-  console.log(options);
   if(options.headless){
     console.log('Crawling in headless mode, so there is no visual output, just waiting to complete');
   }
