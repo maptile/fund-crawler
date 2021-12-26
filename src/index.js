@@ -12,9 +12,9 @@ function run(){
 
   switch(argv._[0]){
     case 'crawl':
-      return crawler.run();
+      return crawler.run(argv);
     case 'extract':
-      return extractor.run();
+      return extractor.run(argv);
     default:
       return help();
   }

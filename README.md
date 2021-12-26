@@ -28,8 +28,15 @@ npm i
 
 ### 抓取数据
 
+默认以headless方式开启chromium抓取，所以看不到界面输出。
 ```
 npm start crawl
+```
+
+如果想看chromium的访问内容，可以执行
+
+```
+npm start -- crawl --headless false
 ```
 
 抓取结果会按分类，放在./results中

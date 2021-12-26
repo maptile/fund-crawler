@@ -1,6 +1,7 @@
 const {chromium} = require('playwright');
 const path = require('path');
 const {writeFile, stat, mkdir} = require('fs/promises');
+const _ = require('lodash');
 const config = require('../config');
 const ROOT = './results';
 
@@ -10,6 +11,22 @@ async function sleep(s){
       resolve();
     }, s * 1000);
   });
+}
+
+function strToBool(str){
+  if(_.isBoolean(str)){
+    return str;
+  }
+
+  if(!str){
+    return false;
+  }
+
+  if(str === 'true' || str === 'y' || str === 'Y' || str === '1'){
+    return true;
+  }
+
+  return false;
 }
 
 async function writeToFile(directory, filename, content){
@@ -98,8 +115,21 @@ async function execute(crawler, context, fundCode){
   page.close();
 }
 
-async function run() {
-  const browser = await chromium.launch({headless: false, slowMo: 50});
+async function run(options) {
+  const defaultOptions = {
+    headless: true
+  };
+
+  options = _.assign(defaultOptions, options);
+  console.log(options);
+  options.headless = strToBool(options.headless);
+
+  console.log(options);
+  if(options.headless){
+    console.log('Crawling in headless mode, so there is no visual output, just waiting to complete');
+  }
+
+  const browser = await chromium.launch({headless: options.headless, slowMo: 50});
   const context = await browser.newContext({
     screen: {
       width: 1920,
