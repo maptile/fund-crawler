@@ -54,3 +54,6 @@ npm start extract
 
 * 如果贴好了csv，但第一个sheet（基金）没有显示正确的内容，那么请核对每一个sheet的代码是否是相同的类型
 
+## 示例
+
+![Sample Screen Shot](/screenshot.png)
