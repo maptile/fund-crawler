@@ -66,3 +66,12 @@ npm start extract
 ## 示例
 
 ![Sample Screen Shot](/screenshot.png)
+
+## 计划
+
+以下为一些想法，未进行重要程度排序。
+
+* 容器化
+* 自动生成excel
+* 自动生成网页
+* 抓取晨星评级
