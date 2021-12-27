@@ -39,135 +39,27 @@ async function writeToFile(directory, filename, content){
   await writeFile(path.join(directory, filename), content, {encoding: 'utf-8'});
 }
 
-async function basicElementFinder(page){
-  const html = '<table class="basic">' + await page.innerHTML('table.info') + '</table>';
-  return html;
-}
-
-async function historyElementFinder(page){
-  await page.waitForSelector('#jdzftable div.jdzfnew');
-  const html = await page.innerHTML('#jdzftable');
-
-  return html;
-}
-
-async function managerElementFinder(page){
-  const tables = await page.$$('table.comm.jloff');
-
-  const managerInfo = await tables[0].innerHTML();
-  const managementInfo = await tables[1].innerHTML();
-  const html = `<table class="manager">${managerInfo}</table><table class="management">${managementInfo}</table>`;
-
-  return html;
-}
-
-async function scoreElementFinder(page){
-  await page.waitForSelector('#fundgradetable tbody tr');
-  const html = '<table class="score">' + await page.innerHTML('#fundgradetable') + '</table>';
-
-  return html;
-}
-
-async function riskElementFinder(page){
-  const html = '<table class="risk">' + await page.innerHTML('table.fxtb') + '</table>';
-
-  const indexFundSpecial = await page.$('#jjzsfj table.fxtb');
-
-  let html2 = '';
-  if(indexFundSpecial){
-    html2 = '<table class="track">' + await page.innerHTML('#jjzsfj table.fxtb') + '</table>';
-  }
-
-  return html + html2;
-}
-
-async function turnoverAndCentralizationFinder(page){
-  let hasCentralization;
-  try{
-    await page.waitForSelector('#qscctable table', {
-      timeout: 500
-    });
-
-    hasCentralization = true;
-  } catch(e){
-    hasCentralization = false;
-  }
-
-  let html1 = '';
-
-  if(hasCentralization){
-    html1 = '<table class="centralization">' + await page.innerHTML('#qscctable table') + '</table>';
-  }
-
-  let hasTurnover;
-  try{
-    await page.waitForSelector('#hsltable table', {
-      timeout: 500
-    });
-
-    hasTurnover = true;
-  } catch(e){
-    hasTurnover = false;
-  }
-
-  let html2 = '';
-
-  if(hasTurnover){
-    html2 = '<table class="turnover">' + await page.innerHTML('#hsltable table') + '</table>';
-  }
-
-  return html1 + html2;
-}
-
-async function top10HoldingsFinder(page){
-  let hasTop10;
-
-  try{
-    await page.waitForSelector('#cctable div table', {
-      timeout: 500
-    });
-
-    hasTop10 = true;
-  } catch(e){
-    hasTop10 = false;
-  }
-
-  if(hasTop10){
-    const tables = await page.$$('#cctable div table');
-    return '<table class="top10Holdings">' + await tables[0].innerHTML() + '</table>';
-  }
-
-  return '';
-}
-
 const crawlers = [{
   type: 'basic',
   url: _.template('http://fundf10.eastmoney.com/jbgk_<%=fundCode%>.html'),
-  elementFinder: basicElementFinder
 }, {
   type: 'history',
   url: _.template('http://fundf10.eastmoney.com/jdzf_<%=fundCode%>.html'),
-  elementFinder: historyElementFinder
 }, {
   type: 'manager',
   url: _.template('http://fundf10.eastmoney.com/jjjl_<%=fundCode%>.html'),
-  elementFinder: managerElementFinder
 }, {
   type: 'score',
   url: _.template('http://fundf10.eastmoney.com/jjpj_<%=fundCode%>.html'),
-  elementFinder: scoreElementFinder
 }, {
   type: 'risk',
   url: _.template('http://fundf10.eastmoney.com/tsdata_<%=fundCode%>.html'),
-  elementFinder: riskElementFinder
 }, {
   type: 'turnoverAndCentralization',
   url: _.template('http://fundf10.eastmoney.com/ccbdzs_<%=fundCode%>.html'),
-  elementFinder: turnoverAndCentralizationFinder
 }, {
   type: 'top10Holdings',
   url: _.template('http://fundf10.eastmoney.com/ccmx_<%=fundCode%>.html'),
-  elementFinder: top10HoldingsFinder
 }];
 
 async function execute(crawler, context, fundCode){
@@ -175,7 +67,7 @@ async function execute(crawler, context, fundCode){
   await page.goto(crawler.url({fundCode}));
   await sleep(1);
 
-  const result = await crawler.elementFinder(page);
+  const result = await page.innerHTML('html')
 
   await writeToFile(path.join(ROOT, crawler.type), `${fundCode}.html`, result);
   await sleep(0.5);

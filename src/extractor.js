@@ -14,8 +14,8 @@ function strToDate(str){
 }
 
 function strTimeSpanToYears(str){
-  const yearRegex = new RegExp('\\d+(?=年)');
-  const dayRegex = new RegExp('\\d+(?=天)');
+  const yearRegex = new RegExp(/\d+(?=年)/);
+  const dayRegex = new RegExp(/\d+(?=天)/);
 
   const yearResult = str.match(yearRegex);
   const dayResult = str.match(dayRegex);
@@ -35,13 +35,31 @@ function strTimeSpanToYears(str){
 }
 
 function strPercentageToNumber(str){
-  const num = parseFloat(str.replace('%', ''));
+  const percentageRegex = new RegExp(/-{0,1}\d*\.{0,1}\d+(?=%)/);
 
-  if(isNaN(num)){
-    return '--';
+  const percentage = str.match(percentageRegex);
+
+  if(!percentage){
+    return '';
   }
 
+  const num = parseFloat(percentage[0]);
+
   return Math.round(num * 100) / 10000;
+}
+
+function strToNumber(str){
+  const numberRegex = new RegExp(/-{0,1}\d*\.{0,1}\d+/);
+
+  const number = str.match(numberRegex);
+
+  if(!number){
+    return '';
+  }
+
+  const num = parseFloat(number[0]);
+
+  return num;
 }
 
 function howManyYears(date){
@@ -50,12 +68,12 @@ function howManyYears(date){
   return Math.round(diff / 1000 / 60 / 60 / 24 / 365 * 100) / 100;
 }
 
-function getTableCellText($, text){
-  const th = $('th').filter((i, h) => {
+function getTableNextCellText($, table, text){
+  const th = table.find('th').filter((i, h) => {
     return $(h).text() == text;
   });
 
-  return th.next().text();
+  return th.next().text().trim();
 }
 
 function getTableRow($, table, text){
@@ -93,19 +111,21 @@ async function extractBasic(){
 
     const $ = cheerio.load(fileContent);
 
-    const foundDate = strToDate(getTableCellText($, '成立日期/规模').split('/')[0].trim());
+    const table = $('table.info');
+
+    const foundDate = strToDate(getTableNextCellText($, table, '成立日期/规模').split('/')[0].trim());
     const years = howManyYears(foundDate); // 距今年数
 
-    const name = getTableCellText($, '基金简称').trim();
-    const type = getTableCellText($, '基金类型').trim();
-    const amount = getTableCellText($, '资产规模').split('亿元')[0].trim();
-    const company = getTableCellText($, '基金管理人');
-    const manager = getTableCellText($, '基金经理人');
-    const manageRate = strPercentageToNumber(getTableCellText($, '管理费率').split('%')[0]);
-    const manageRate2 = strPercentageToNumber(getTableCellText($, '托管费率').split('%')[0]);
-    const salesRate = strPercentageToNumber(getTableCellText($, '销售服务费率').split('%')[0]);
-    const buyRate = strPercentageToNumber($('tr:nth(8)').find('td:nth(0) span:nth(1)').find('span').text().split('%')[0]);
-    const sellRate = strPercentageToNumber(getTableCellText($, '最高赎回费率').split('%')[0]);
+    const name = getTableNextCellText($, table, '基金简称');
+    const type = getTableNextCellText($, table, '基金类型');
+    const amount = strToNumber(getTableNextCellText($, table, '资产规模'));
+    const company = getTableNextCellText($, table, '基金管理人');
+    const manager = getTableNextCellText($, table, '基金经理人');
+    const manageRate = strPercentageToNumber(getTableNextCellText($, table, '管理费率'));
+    const manageRate2 = strPercentageToNumber(getTableNextCellText($, table, '托管费率'));
+    const salesRate = strPercentageToNumber(getTableNextCellText($, table, '销售服务费率'));
+    const buyRate = strPercentageToNumber(table.find('tr:nth(8) td:nth(0) span:nth(1) span').text());
+    const sellRate = strPercentageToNumber(getTableNextCellText($, table, '最高赎回费率'));
 
     results.push([fundCode, name, type, years, amount, company, manager, manageRate, manageRate2, salesRate, buyRate, sellRate]);
   }
@@ -137,20 +157,14 @@ async function extractHistory(){
 
     const $ = cheerio.load(fileContent);
 
-    $('ul.fcol').remove();
+    $('#jdzftable ul.fcol').remove();
 
-    const indicators = $('ul');
+    const indicators = $('#jdzftable ul');
 
     const row = [filename.replace('.html', '')];
 
     for(const indicator of indicators){
-      const zhangfu = parseFloat($(indicator).find('li:nth(1)').text().replace('%', ''));
-
-      if(isNaN(zhangfu)){
-        row.push(0);
-      } else {
-        row.push(Math.round(zhangfu * 100) / 10000);
-      }
+      row.push(strPercentageToNumber($(indicator).find('li:nth(1)').text()));
     }
 
     results.push(row);
@@ -176,7 +190,8 @@ async function extractManager(){
 
     const $ = cheerio.load(fileContent);
 
-    const managerRow = $('table.manager tbody tr:first');
+    const managerTable = $('table.comm.jloff:first');
+    const managerRow = managerTable.find('tbody tr:first');
 
     const managerName = managerRow.find('td:nth(2)').text().trim().replace(/ /g, '、');
     const manageTime = strTimeSpanToYears(managerRow.find('td:nth(3)').text());
@@ -204,7 +219,9 @@ async function extractRisk(){
     '夏普比率-近2年',
     '夏普比率-近3年',
     '跟踪指数',
-    '跟踪误差'
+    '跟踪误差',
+    '风险等级',
+    '同类风险等级'
   ]];
 
   for(const filename of filenames){
@@ -212,12 +229,17 @@ async function extractRisk(){
 
     const $ = cheerio.load(fileContent);
 
-    const sdRow = getTableRow($, $('table:nth(0)'), '标准差');
+    const riskInAllFunds = $('.allfxdj:first').find('li span.chooseLow').text();
+    const riskInSameTypeFunds = $('.allfxdj:nth(1)').find('li span.chooseLow').text()
+
+    const table = $('table.fxtb:first');
+
+    const sdRow = getTableRow($, table, '标准差');
     const last1YearSd = strPercentageToNumber($(sdRow).find('td:nth(1)').text());
     const last2YearSd = strPercentageToNumber($(sdRow).find('td:nth(2)').text());
     const last3YearSd = strPercentageToNumber($(sdRow).find('td:nth(3)').text());
 
-    const sharpRow = getTableRow($, $('table:nth(0)'), '夏普比率');
+    const sharpRow = getTableRow($, table, '夏普比率');
     const last1YearSharp = $(sharpRow).find('td:nth(1)').text();
     const last2YearSharp = $(sharpRow).find('td:nth(2)').text();
     const last3YearSharp = $(sharpRow).find('td:nth(3)').text();
@@ -225,18 +247,19 @@ async function extractRisk(){
     let tracking = '';
     let trackingError = '';
 
-    const trackingTable = $('table:nth(1)');
+    const trackingIndexTable = $('table.fxtb:nth(1)');
 
-    if(trackingTable){
-      tracking = trackingTable.find('tr:nth(1) td:nth(0)').text();
-      trackingError = strPercentageToNumber(trackingTable.find('tr:nth(1) td:nth(1)').text());
+    if(trackingIndexTable){
+      tracking = trackingIndexTable.find('tr:nth(1) td:nth(0)').text();
+      trackingError = strPercentageToNumber(trackingIndexTable.find('tr:nth(1) td:nth(1)').text());
     }
 
     const row = [
       filename.replace('.html', ''),
       last1YearSd, last2YearSd, last3YearSd,
       last1YearSharp, last2YearSharp, last3YearSharp,
-      tracking, trackingError
+      tracking, trackingError,
+      riskInAllFunds, riskInSameTypeFunds
     ];
 
     results.push(row);
@@ -264,9 +287,11 @@ async function extractScore(){
 
     const $ = cheerio.load(fileContent);
 
+    const table = $('#fundgradetable');
+
     const row = [filename.replace('.html', '')];
 
-    const trs = $('table tbody tr');
+    const trs = table.find('tbody tr');
 
     for(const tr of trs){
       const tds = $(tr).find('td');
@@ -302,11 +327,9 @@ async function extractTurnoverAndCentralization(){
 
     const $ = cheerio.load(fileContent);
 
-    // WHY: can't use table.centralization tbody tr:first td:nth(1) to locate the element.
-    // very strange
-    const centralization = strPercentageToNumber($('table.centralization tbody tr td:nth(1)').text());
+    const centralization = strPercentageToNumber($('#qscctable table tbody tr td:nth(1)').text());
 
-    const turnoverRate = strPercentageToNumber($('table.turnover tbody tr td:nth(1)').text());
+    const turnoverRate = strPercentageToNumber($('#hsltable table tbody tr td:nth(1)').text());
 
     const row = [filename.replace('.html', ''), centralization, turnoverRate];
 
@@ -331,11 +354,20 @@ async function extractTop10Holdings(){
 
     const $ = cheerio.load(fileContent);
 
-    const rows = $('table.top10Holdings tbody tr');
+    // TODO: it seems can't 'use #cctable div table.comm.tzxq:first tbody tr' to get all tr
+    // so use this way
+    const rows = $('#cctable div table.comm.tzxq:first').find('tr');
 
     let text = [];
     for(const row of rows){
       const name = $(row).find('td:nth(2)').text();
+
+      // reason: [see above]
+      // so we should check if name is empty
+      if(!name){
+        continue;
+      }
+
       const percentage = $(row).find('td:nth(6)').text();
       text.push(name + '(' + percentage + ')');
     }
@@ -361,4 +393,3 @@ async function run() {
 module.exports = {
   run
 };
-
