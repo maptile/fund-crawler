@@ -286,12 +286,76 @@ async function extractScore(){
   await writeToFile(path.join(ROOT, category + '.csv'), results);
 }
 
+async function extractTurnoverAndCentralization(){
+  const category = 'turnoverAndCentralization';
+  const dir = path.join(ROOT, category);
+  const filenames = await readdir(dir);
+
+  const results = [[
+    '代码',
+    '前十持仓占比',
+    '换手率',
+  ]];
+
+  for(const filename of filenames){
+    const fileContent = await readFile(path.join(dir, filename), {encoding: 'utf-8'});
+
+    const $ = cheerio.load(fileContent);
+
+    // WHY: can't use table.centralization tbody tr:first td:nth(1) to locate the element.
+    // very strange
+    const centralization = strPercentageToNumber($('table.centralization tbody tr td:nth(1)').text());
+
+    const turnoverRate = strPercentageToNumber($('table.turnover tbody tr td:nth(1)').text());
+
+    const row = [filename.replace('.html', ''), centralization, turnoverRate];
+
+    results.push(row);
+  }
+
+  await writeToFile(path.join(ROOT, category + '.csv'), results);
+}
+
+async function extractTop10Holdings(){
+  const category = 'top10Holdings';
+  const dir = path.join(ROOT, category);
+  const filenames = await readdir(dir);
+
+  const results = [[
+    '代码',
+    '前十持仓股票',
+  ]];
+
+  for(const filename of filenames){
+    const fileContent = await readFile(path.join(dir, filename), {encoding: 'utf-8'});
+
+    const $ = cheerio.load(fileContent);
+
+    const rows = $('table.top10Holdings tbody tr');
+
+    let text = [];
+    for(const row of rows){
+      const name = $(row).find('td:nth(2)').text();
+      const percentage = $(row).find('td:nth(6)').text();
+      text.push(name + '(' + percentage + ')');
+    }
+
+    const row = [filename.replace('.html', ''), text.join(' ')];
+
+    results.push(row);
+  }
+
+  await writeToFile(path.join(ROOT, category + '.csv'), results);
+}
+
 async function run() {
   await extractBasic();
   await extractHistory();
   await extractManager();
   await extractRisk();
   await extractScore();
+  await extractTurnoverAndCentralization();
+  await extractTop10Holdings();
 }
 
 module.exports = {

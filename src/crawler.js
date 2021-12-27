@@ -81,6 +81,65 @@ async function riskElementFinder(page){
   return html + html2;
 }
 
+async function turnoverAndCentralizationFinder(page){
+  let hasCentralization;
+  try{
+    await page.waitForSelector('#qscctable table', {
+      timeout: 500
+    });
+
+    hasCentralization = true;
+  } catch(e){
+    hasCentralization = false;
+  }
+
+  let html1 = '';
+
+  if(hasCentralization){
+    html1 = '<table class="centralization">' + await page.innerHTML('#qscctable table') + '</table>';
+  }
+
+  let hasTurnover;
+  try{
+    await page.waitForSelector('#hsltable table', {
+      timeout: 500
+    });
+
+    hasTurnover = true;
+  } catch(e){
+    hasTurnover = false;
+  }
+
+  let html2 = '';
+
+  if(hasTurnover){
+    html2 = '<table class="turnover">' + await page.innerHTML('#hsltable table') + '</table>';
+  }
+
+  return html1 + html2;
+}
+
+async function top10HoldingsFinder(page){
+  let hasTop10;
+
+  try{
+    await page.waitForSelector('#cctable div table', {
+      timeout: 500
+    });
+
+    hasTop10 = true;
+  } catch(e){
+    hasTop10 = false;
+  }
+
+  if(hasTop10){
+    const tables = await page.$$('#cctable div table');
+    return '<table class="top10Holdings">' + await tables[0].innerHTML() + '</table>';
+  }
+
+  return '';
+}
+
 const crawlers = [{
   type: 'basic',
   url: _.template('http://fundf10.eastmoney.com/jbgk_<%=fundCode%>.html'),
@@ -101,6 +160,14 @@ const crawlers = [{
   type: 'risk',
   url: _.template('http://fundf10.eastmoney.com/tsdata_<%=fundCode%>.html'),
   elementFinder: riskElementFinder
+}, {
+  type: 'turnoverAndCentralization',
+  url: _.template('http://fundf10.eastmoney.com/ccbdzs_<%=fundCode%>.html'),
+  elementFinder: turnoverAndCentralizationFinder
+}, {
+  type: 'top10Holdings',
+  url: _.template('http://fundf10.eastmoney.com/ccmx_<%=fundCode%>.html'),
+  elementFinder: top10HoldingsFinder
 }];
 
 async function execute(crawler, context, fundCode){
@@ -143,7 +210,7 @@ async function run(options) {
   const total = config.watchedFunds.length;
   let index = 1;
   for(const fundCode of config.watchedFunds){
-    console.log(index + '/' + total);
+    console.log(index + '/' + total, fundCode);
     index++;
 
     for(const crawler of crawlers){
