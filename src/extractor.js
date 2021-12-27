@@ -3,6 +3,8 @@ const path = require('path');
 const cheerio = require('cheerio');
 const ROOT = './results';
 
+const SIX_MONTH_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+
 async function writeToFile(filename, rows){
   const text = rows.map((r) => (r.join(','))).join('\n');
 
@@ -82,6 +84,23 @@ function getTableRow($, table, text){
   });
 
   return tr;
+}
+
+function isOlderThan6Months(strDate){
+  const parts = strDate.split('-');
+
+  if(parts.length != 3){
+    return true;
+  }
+
+  // can use strDate directly since the timezone does not seriously effect the result
+  const diff = (new Date()).getTime() - (new Date(strDate)).getTime();
+
+  if(diff > SIX_MONTH_MS){
+    return true;
+  }
+
+  return false;
 }
 
 async function extractBasic(){
@@ -295,6 +314,12 @@ async function extractScore(){
 
     for(const tr of trs){
       const tds = $(tr).find('td');
+
+      const date = $(tds[0]).text();
+
+      if(isOlderThan6Months(date)){
+        continue;
+      }
 
       for(let i = 0; i < tds.length; i++){
         const td = tds[i];
