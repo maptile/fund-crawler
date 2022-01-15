@@ -3,6 +3,9 @@ const cheerio = require('cheerio');
 const utils = require('../lib/utils');
 
 const PROVIDER_NAME = 'ttfund-top10Holdings';
+const HEADER = [
+  '前十持仓股票',
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/ccmx_<%=code%>.html');
 
@@ -45,21 +48,12 @@ async function extract(content, options){
     text.push(name + '(' + percentage + ')');
   }
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '前十持仓股票',
-    ]);
-  }
-
-  results.push([text.join(' ')]);
-
-  return results;
+  return [text.join(' ')];
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

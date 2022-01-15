@@ -17,7 +17,7 @@ const utils = require('./lib/utils');
 const colorLogger = require('./lib/colorLogger');
 const log = colorLogger.getLogger();
 const log4 = colorLogger.getLogger(4);
-const SAVE_DIR = path.join(env.getAppDir(), './results');
+const SAVE_DIR = path.join(env.getAppDir(), './results/rawdata');
 
 const providers = utils.requireAllFiles(path.resolve('./src/providers'));
 
@@ -25,7 +25,6 @@ let browser;
 
 // Define all available arguments
 const allAvailableArguments = [
-  {name: 'website', alias: 'w', type: String, required: true, defaultValue: 'ttfund', description: `Crawl fund from specified websites. Available values are:\n    ttfund              Tiantian Fund https://www.1234567.com.cn/\n    morningstar         Morning Start https://www.morningstar.cn/\n    xstock              X-Stock http://x-stock.axiaoxin.com/fund`},
   {name: 'append', type: Boolean, defaultValue: false, description: 'Whether append crawled fund code to config.js'},
   {name: 'replace', type: Boolean, defaultValue: false, description: 'Whether replace config.js using crawled fund code'},
   {name: 'headless', type: Boolean, defaultValue: false, description: 'Whether using headless(no UI) chromium to crawl website'},
@@ -41,7 +40,7 @@ function getArguments(){
 
 function printUsage(){
   log.info(`
-Crawler mutual fund info from various websites
+Crawl mutual fund info from various providers
 
 Usage:
 
@@ -50,21 +49,23 @@ npm start -- crawl <args>
 Arguments:
 
 ${getOptsHelper.getUsage(allAvailableArguments).join('\n')}
-
-Examples:
-
-npm start -- crawl -w ttfund -w morningstar
 `);
 }
 
 async function writeToFile(directory, filename, content){
+  const fullFileName = path.join(directory, filename);
+  log.debug('writing to file', fullFileName);
+
   try{
     await stat(directory);
   } catch(e){
+    log.debug(`directory ${directory} does not exist, creating...`);
     await mkdir(directory, {recursive: true});
+    log.debug('created');
   }
 
-  await writeFile(path.join(directory, filename), content, {encoding: 'utf-8'});
+  await writeFile(fullFileName, content, {encoding: 'utf-8'});
+  log.debug('wrote');
 }
 
 async function getBrowserContext(args){
@@ -117,17 +118,11 @@ async function run(){
     console.log('Crawling in headless mode, so there is no visual output, just waiting to complete');
   }
 
-  const websites = Array.isArray(args.w) ? args.w : [args.w];
-
-  if(websites.length == 0){
-    console.log('No crawl website specified');
-    printUsage();
-    return;
-  }
-
   const context = await getBrowserContext(args);
 
   const fundCodeCount = config.watchedFunds.length;
+
+  log.info(`total ${fundCodeCount} funds to crawl`);
 
   args.context = context;
 
@@ -145,7 +140,7 @@ async function run(){
     };
 
     for(const provider of providers){
-      log4.debug(`crawling ${provider.name} ${provider.type}`);
+      log4.info(`crawl using ${provider.name}`);
 
       const content = await provider.crawl(code, args);
 

@@ -2,7 +2,7 @@
    process
 */
 const path = require('path');
-const {readdir, readFile} = require('fs/promises');
+const {readdir, readFile, writeFile} = require('fs/promises');
 const getopts = require('getopts');
 
 const utils = require('./lib/utils');
@@ -12,17 +12,15 @@ const env = require('./lib/env');
 
 const colorLogger = require('./lib/colorLogger');
 const log = colorLogger.getLogger();
+const log4 = colorLogger.getLogger(4);
 
+const READ_DIR = path.join(env.getAppDir(), './results/rawdata');
 const SAVE_DIR = path.join(env.getAppDir(), './results');
 
 const providers = utils.requireAllFiles(path.resolve('./src/providers'));
 
 // Define all available arguments
 const allAvailableArguments = [
-  {name: 'website', alias: 'w', type: String, required: true, defaultValue: 'ttfund', description: `Extract crawled webpages to CSV. Available values are:
-      ttfund              Tiantian Fund https://www.1234567.com.cn/
-      morningstar         Morning Start https://www.morningstar.cn/
-      xstock              X-Stock http://x-stock.axiaoxin.com/fund`},
   {name: 'verbose', alias: 'v', description: 'Verbose mode'},
   {name: 'help', alias: 'h', type: Boolean, description: 'Show help'}
 ];
@@ -39,18 +37,13 @@ Extract crawled webpages to CSV
 
 Usage:
 
-npm start -- extract -w ttfund
+npm start -- extract <args>
 
 Arguments:
 
 ${getOptsHelper.getUsage(allAvailableArguments).join('\n')}
-
-Examples:
-
-npm start -- extract -w ttfund
 `);
 }
-
 
 async function run(){
   const args = getArguments();
@@ -79,20 +72,56 @@ async function run(){
     return;
   }
 
-  const filenames = await readdir(SAVE_DIR);
+  log.debug('reading saved results from', READ_DIR);
+
+  const filenames = await readdir(READ_DIR);
+  const filenameCount = filenames.length;
+
+  log.info(`total ${filenames.length} files to process`);
+
+  let index = 1;
+
+  const result = [];
+
+  let header = ['代码'];
+
+  for(const provider of providers){
+    header = header.concat(provider.header);
+  }
+
+  result.push(header);
 
   for(const filename of filenames){
-    const content = await readFile(path.join(SAVE_DIR, filename), {encoding: 'utf-8'});
+    log.info(`processing ${index} of ${filenameCount}`);
+    index++;
+
+    const fileFullName = path.join(READ_DIR, filename);
+
+    log.debug('reading', fileFullName);
+    const content = await readFile(fileFullName, {encoding: 'utf-8'});
 
     const parsed = JSON.parse(content);
 
-    for(const provider of providers){
-      const r = await provider.extract(parsed.content[provider.name]);
+    const options = {};
 
-      console.log(r);
+    let row = [parsed.code];
+
+    log4.info(parsed.code);
+    for(const provider of providers){
+      log4.info(`extract using ${provider.name}`);
+      const data = await provider.extract(parsed.content[provider.name], options);
+
+      row = row.concat(data);
     }
+
+    result.push(row);
   }
 
+  const outputStr = result.map((row) => {
+    return row.join(',');
+  }).join('\n');
+
+  await writeFile(path.join(SAVE_DIR, 'output.csv'), outputStr, {encoding: 'utf-8'});
   log.info('Done');
 }
 

@@ -3,6 +3,11 @@ const cheerio = require('cheerio');
 const utils = require('../lib/utils');
 
 const PROVIDER_NAME = 'ttfund-manager';
+const HEADER = [
+  '基金经理',
+  '任职期间',
+  '任职回报'
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/jjjl_<%=code%>.html');
 
@@ -34,23 +39,12 @@ async function extract(content, options){
   const manageTime = utils.strTimeSpanToYears(managerRow.find('td:nth(3)').text());
   const manageReturns = utils.strPercentageToNumber(managerRow.find('td:nth(4)').text());
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '基金经理',
-      '任职期间',
-      '任职回报'
-    ]);
-  }
-
-  results.push([managerName, manageTime, manageReturns]);
-
-  return results;
+  return [managerName, manageTime, manageReturns];
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

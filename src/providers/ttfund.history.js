@@ -3,6 +3,18 @@ const cheerio = require('cheerio');
 const utils = require('../lib/utils');
 
 const PROVIDER_NAME = 'ttfund-history';
+const HEADER = [
+  '今年来',
+  '近1周',
+  '近1月',
+  '近3月',
+  '近6月',
+  '近1年',
+  '近2年',
+  '近3年',
+  '近5年',
+  '成立来'
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/jdzf_<%=code%>.html');
 
@@ -37,30 +49,12 @@ async function extract(content, options){
     row.push(utils.strPercentageToNumber($(indicator).find('li:nth(1)').text()));
   }
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '今年来',
-      '近1周',
-      '近1月',
-      '近3月',
-      '近6月',
-      '近1年',
-      '近2年',
-      '近3年',
-      '近5年',
-      '成立来'
-    ]);
-  }
-
-  results.push(row);
-
-  return results;
+  return row;
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

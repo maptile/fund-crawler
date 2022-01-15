@@ -3,6 +3,12 @@ const cheerio = require('cheerio');
 const utils = require('../lib/utils');
 
 const PROVIDER_NAME = 'ttfund-rating';
+const HEADER = [
+  '招商',
+  '上证三年',
+  '上证五年',
+  '济安金信'
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/jjpj_<%=code%>.html');
 
@@ -45,31 +51,18 @@ async function extract(content, options){
     for(let i = 0; i < tds.length; i++){
       const td = tds[i];
       const text = $(td).text();
-      if(text.indexOf('★') >= 0 && !row[i]){
-        row[i] = text.length;
+      if(text.indexOf('★') >= 0 && !row[i - 1]){
+        row[i - 1] = text.length;
       }
     }
   }
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '招商',
-      '上证三年',
-      '上证五年',
-      '济安金信',
-      '晨星'
-    ]);
-  }
-
-  results.push(row);
-
-  return results;
+  return row;
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

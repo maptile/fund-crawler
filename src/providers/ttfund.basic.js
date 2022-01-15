@@ -6,6 +6,19 @@ const domUtils = require('../lib/domUtils');
 const urlTemplate = _.template('http://fundf10.eastmoney.com/jbgk_<%=code%>.html');
 
 const PROVIDER_NAME = 'ttfund-basic';
+const HEADER = [
+  '基金简称',
+  '基金类型',
+  '距今年数',
+  '资产规模(亿元)',
+  '基金公司',
+  '基金经理人',
+  '管理费率',
+  '托管费率',
+  '销售服务费率',
+  '最高认购费率',
+  '最高赎回费率',
+];
 
 async function crawl(code, options){
   const page = await options.context.newPage();
@@ -44,31 +57,12 @@ async function extract(content, options){
   const buyRate = utils.strPercentageToNumber(table.find('tr:nth(8) td:nth(0) span:nth(1) span').text());
   const sellRate = utils.strPercentageToNumber(domUtils.getTableNextCellText($, table, '最高赎回费率'));
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '基金简称',
-      '基金类型',
-      '距今年数',
-      '资产规模(亿元)',
-      '基金公司',
-      '基金经理人',
-      '管理费率',
-      '托管费率',
-      '销售服务费率',
-      '最高认购费率',
-      '最高赎回费率',
-    ]);
-  }
-
-  results.push([name, type, years, amount, company, manager, manageRate, manageRate2, salesRate, buyRate, sellRate]);
-
-  return results;
+  return [name, type, years, amount, company, manager, manageRate, manageRate2, salesRate, buyRate, sellRate];
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

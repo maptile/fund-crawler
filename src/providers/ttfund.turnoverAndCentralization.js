@@ -3,6 +3,10 @@ const cheerio = require('cheerio');
 const utils = require('../lib/utils');
 
 const PROVIDER_NAME = 'ttfund-turnoverAndCentralization';
+const HEADER = [
+  '前十持仓占比',
+  '换手率',
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/ccbdzs_<%=code%>.html');
 
@@ -31,22 +35,12 @@ async function extract(content, options){
 
   const turnoverRate = utils.strPercentageToNumber($('#hsltable table tbody tr td:nth(1)').text());
 
-  const results = [];
-
-  if(options.returnField){
-    results.push([
-      '前十持仓占比',
-      '换手率',
-    ]);
-  }
-
-  results.push([centralization, turnoverRate]);
-
-  return results;
+  return [centralization, turnoverRate];
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };

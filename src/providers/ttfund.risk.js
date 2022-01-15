@@ -4,6 +4,18 @@ const utils = require('../lib/utils');
 const domUtils = require('../lib/domUtils');
 
 const PROVIDER_NAME = 'ttfund-risk';
+const HEADER = [
+  '标准差-近1年',
+  '标准差-近2年',
+  '标准差-近3年',
+  '夏普比率-近1年',
+  '夏普比率-近2年',
+  '夏普比率-近3年',
+  '跟踪指数',
+  '跟踪误差',
+  '风险等级',
+  '同类风险等级'
+];
 
 const urlTemplate = _.template('http://fundf10.eastmoney.com/tsdata_<%=code%>.html');
 
@@ -53,34 +65,17 @@ async function extract(content, options){
     trackingError = utils.strPercentageToNumber(trackingIndexTable.find('tr:nth(1) td:nth(1)').text());
   }
 
-  const results = [];
-  if(options.returnField){
-    results.push([
-      '标准差-近1年',
-      '标准差-近2年',
-      '标准差-近3年',
-      '夏普比率-近1年',
-      '夏普比率-近2年',
-      '夏普比率-近3年',
-      '跟踪指数',
-      '跟踪误差',
-      '风险等级',
-      '同类风险等级'
-    ]);
-  }
-
-  results.push([
+  return [
     last1YearSd, last2YearSd, last3YearSd,
     last1YearSharp, last2YearSharp, last3YearSharp,
     tracking, trackingError,
     riskInAllFunds, riskInSameTypeFunds
-  ]);
-
-  return results;
+  ];
 }
 
 module.exports = {
   name: PROVIDER_NAME,
+  header: HEADER,
   crawl,
   extract
 };
