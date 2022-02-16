@@ -18,8 +18,8 @@ This tool is used to crawl [ttfund](https://1234567.com.cn) and [morningstar](ht
 
 ```
 npx playwright install
-git clone https://github.com/maptile/ttfund-crawler.git
-cd ttfund-crawler
+git clone https://github.com/maptile/fund-crawler.git
+cd fund-crawler
 npm i
 ```
 
