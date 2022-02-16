@@ -1,15 +1,14 @@
-# 天天基金抓取器
+# 基金抓取器
 
-This tool is used to crawl [ttfund](https://1234567.com.cn) mutual fund data based on which fund you are interested with(via config file).
+This tool is used to crawl [ttfund](https://1234567.com.cn) and [morningstar](https://www.morningstar.cn) mutual fund data based on which fund you are interested with(via config file).
 
 ## 特点
 
 - 可配置需要抓取的基金代码列表
 - 抓取基金基本信息、购买费率、基金经理、评级、风险（夏普比率、标准差、历史涨幅）等
 - 抓取资料和提取数据分两步进行，这样在后期调整提取逻辑时，无需重新抓取
-- 抓取结果保存为html格式
+- 抓取结果保存为json格式
 - 提取数据保存为csv格式
-- 附带excel模板，可以直接将抓取结果贴入对应sheet，以便合并展示
 
 ## 使用方法
 
@@ -26,42 +25,59 @@ npm i
 
 ### 配置
 
-打开`config.js`，编辑watchedFunds数组，数组内容为需要抓取的基金代码，如000000, 000001等。
+将`config.sample.js`复制为`config.js`，并编辑watchedFunds数组，数组内容为需要抓取的基金代码，如000000, 000001等。
+
+如果需要抓取晨星的数据，可以在morningstar一节中填入用户名和密码，登陆时可以自动填充（可选步骤）。
 
 ### 抓取数据
 
-默认以headless方式开启chromium抓取，所以看不到界面输出。
+默认以带有UI的方式开启chromium抓取，为的是能看到抓取过程。
 ```
-npm start crawl
+npm start -- crawl
 ```
 
-如果想看chromium的访问内容，可以执行
+如果感觉一切顺利，想批量抓取，最好以headless的方式，这样不会影响电脑的使用。
 
 ```
-npm start -- crawl --headless false
+npm start -- crawl --headless
 ```
 
 抓取结果会按分类，放在./results中
 
+### 抓取结果
+
+抓取结果会放在./results/rawdata中，一个基金编号一个文件。
+
+文件结构为：
+
+```
+{
+  "code": "000000", // 基金编号
+  "timestamp": 1644933847903, // 抓取时间
+  "content": {
+    "morningstar": {}, // 抓取到的晨星内容
+    "ttfund": {} // 抓取到的天天基金内容
+  }
+}
+```
+
 ### 提取数据
 
 ```
-npm start extract
+npm start -- extract
 ```
 
-提取的结果会放在./results中，csv格式
-
-### 汇总结果
-
-1. 打开templates/template1.xlsx
-1. 第一列输入关注的基金代码，需要使用字符类型
-1. 打开./results/basic.csv，记得将第一列“代码”设置为文本类型
-1. 将内容粘贴到template1.xlsx中对应的sheet中
-1. 重复上述操作，直到把所有csv都贴进去
+提取的结果会放在./results/output.csv中
 
 ## 常见问题
 
-* 如果贴好了csv，但第一个sheet（基金）没有显示正确的内容，那么请核对每一个sheet的代码是否是相同的类型
+* 打开的CSV，基金编码为数字（开头的0丢了）。需要在打开时，将第一列设置为“文本”类型。
+* 无法抓到晨星评级。暂时无解决办法。临时方案为：
+  * 在基金搜索结果中，按三年评级排序，复制列表内容到excel
+  * 找到最后一个三年五星的基金，在excel里将该基金编码之前的基金都写上5
+  * 找到最后一个三年四星的基金，在excel里将该基金编码之前的基金都写上4
+  * 同理，可以按五年评级排序，找到五年评级中的四、五星基金
+  * 再使用类似vlookup的方式，将数据整合起来
 
 ## 示例
 
@@ -74,18 +90,16 @@ npm start extract
 - [X] 基金股票前十持仓集中度
 - [X] 基金持仓前十
 - [X] 基金评级只抓取最近6个月的数据
-- [ ] 将配置文件变成config.sample.js，并默认不提交config.js
+- [X] 将配置文件变成config.sample.js，并默认不提交config.js
+- [X] 抓取晨星数据
+- [X] 建立一个文件格式，保存每个基金的抓取结果和抓取事件，以便实行增量抓取
+- [X] 可以将数据提取结果合并到一个csv中，便于后续使用
 - [ ] 支持从零开始抓取数据
   - [ ] 从天天基金的基金列表按4433规则抓取符合条件的基金代码
-  - [ ] 从InvesTool抓取符合4433规则的基金代码
   - [ ] 从晨星抓取3年5星，5年4-5星的基金代码
   - [ ] 使用--append, --replace参数将抓取的结果保存到config.js中
-- [ ] 支持子命令，可以根据子命令抓取天天基金、晨星、InvesTool的基金数据
-- [ ] 建立一个文件格式，保存每个基金的抓取结果和抓取事件，以便实行增量抓取
-- [ ] 支持子命令，可以将数据提取结果合并到一个csv中，便于后续使用
 - [ ] 抓取分红
 - [ ] 抓取ETF基金的跟踪指数，以及指数的市盈率、市净率等
-- [ ] 抓取晨星评级、风格箱
 - [ ] 容器化
 - [ ] 自动生成excel
 - [ ] 自动生成网页
