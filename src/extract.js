@@ -2,12 +2,13 @@
    process
 */
 const path = require('path');
-const {readdir, readFile, writeFile} = require('fs/promises');
+const {readdir, readFile, writeFile, stat} = require('fs/promises');
 const getopts = require('getopts');
 
 const utils = require('./lib/utils');
 
 const getOptsHelper = require('./lib/getOptsHelper');
+const config = require('../config.js');
 const env = require('./lib/env');
 
 const colorLogger = require('./lib/colorLogger');
@@ -86,6 +87,10 @@ async function run(){
   let header = ['代码'];
 
   for(const provider of providers){
+    if(utils.isDisabledProvider(config, provider)){
+      log.debug(`provider ${provider.name} is disabled in config, skip it`);
+      continue;
+    }
     header = header.concat(provider.header);
   }
 
@@ -98,6 +103,12 @@ async function run(){
     const fileFullName = path.join(READ_DIR, filename);
 
     log.debug('reading', fileFullName);
+
+    const fileStat = await stat(fileFullName);
+    if(!fileStat.isFile()){
+      continue;
+    }
+
     const content = await readFile(fileFullName, {encoding: 'utf-8'});
 
     const parsed = JSON.parse(content);
@@ -108,6 +119,11 @@ async function run(){
 
     log4.info(parsed.code);
     for(const provider of providers){
+      if(utils.isDisabledProvider(config, provider)){
+        log.debug(`provider ${provider.name} is disabled in config, skip it`);
+        continue;
+      }
+
       log4.info(`extract using ${provider.name}`);
       const data = await provider.extract(parsed.content[provider.name], options);
 

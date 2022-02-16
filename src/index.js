@@ -55,9 +55,9 @@ async function start(){
     case 'extract':
       require('./extract').run();
       break;
-    case 'combine':
-      // require('./extractors').run();
-      throw new Error('Not Implemented');
+    case 'login':
+      require('./login').run();
+      break;
     default:
       printUsage();
       process.exit(1);

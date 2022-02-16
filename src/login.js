@@ -6,6 +6,7 @@ const {readFile, writeFile, stat, mkdir} = require('fs/promises');
 const path = require('path');
 const getopts = require('getopts');
 const {chromium} = require('playwright');
+const _ = require('lodash');
 
 const config = require('../config.js');
 const env = require('./lib/env');
@@ -17,7 +18,6 @@ const utils = require('./lib/utils');
 const colorLogger = require('./lib/colorLogger');
 const log = colorLogger.getLogger();
 const log4 = colorLogger.getLogger(4);
-const log8 = colorLogger.getLogger(8);
 const SAVE_DIR = path.join(env.getAppDir(), './results/rawdata');
 
 const providers = utils.requireAllFiles(path.resolve('./src/providers'));
@@ -26,9 +26,6 @@ let browser;
 
 // Define all available arguments
 const allAvailableArguments = [
-  {name: 'append', type: Boolean, defaultValue: false, description: 'Whether append crawled fund code to config.js'},
-  {name: 'replace', type: Boolean, defaultValue: false, description: 'Whether replace config.js using crawled fund code'},
-  {name: 'headless', type: Boolean, defaultValue: false, description: 'Whether using headless(no UI) chromium to crawl website'},
   {name: 'verbose', alias: 'v', description: 'Verbose mode'},
   {name: 'help', alias: 'h', type: Boolean, description: 'Show help'}
 ];
@@ -41,11 +38,11 @@ function getArguments(){
 
 function printUsage(){
   log.info(`
-Crawl mutual fund info from various providers
+Login to providers
 
 Usage:
 
-npm start -- crawl <args>
+npm start -- login
 
 Arguments:
 
@@ -69,24 +66,12 @@ async function writeToFile(directory, filename, content){
   log.debug('wrote');
 }
 
-async function usingAuthFile(){
-  const authFile = path.join(env.getAppDir(), 'auth.json');
-  try{
-    await stat(authFile);
-    const auth = await readFile(authFile);
-
-    return JSON.parse(auth);
-  } catch(e){
-    return {};
-  }
-}
-
-async function getBrowserContext(args){
+async function getBrowserContext(){
   if(!browser){
-    browser = await chromium.launch({headless: args.headless, slowMo: 50});
+    browser = await chromium.launch({headless: false, slowMo: 50});
   }
 
-  const contextOptions = {
+  const context = await browser.newContext({
     screen: {
       width: 1920,
       height: 1080
@@ -94,13 +79,18 @@ async function getBrowserContext(args){
     viewport: {
       width: 1920,
       height: 1080
-    },
-    storageState: await usingAuthFile()
-  };
-
-  const context = await browser.newContext(contextOptions);
+    }
+  });
 
   return context;
+}
+
+function isDisabledProvider(provider){
+  const disabledProviders = _.get(config, ['providerSettings', 'disable'], []);
+
+  return _.some(disabledProviders, (disabled) => {
+    return provider.name.startsWith(disabled);
+  });
 }
 
 async function run(){
@@ -130,64 +120,22 @@ async function run(){
     return;
   }
 
-  if(args.headless){
-    console.log('Crawling in headless mode, so there is no visual output, just waiting to complete');
-  }
-
-  const context = await getBrowserContext(args);
-
-  const fundCodeCount = config.watchedFunds.length;
-
-  log.info(`total ${fundCodeCount} funds to crawl`);
+  const context = await getBrowserContext();
 
   args.context = context;
   args.config = config;
 
-  const timestamp = new Date().getTime();
-
-  let index = 1;
-  for(const code of config.watchedFunds){
-    log.info(`processing ${index} of ${fundCodeCount}`);
-    index++;
-
-    const fundData = {
-      code,
-      timestamp,
-      content: {}
-    };
-
-    for(const provider of providers){
-      if(utils.isDisabledProvider(config, provider)){
-        log.debug(`provider ${provider.name} is disabled in config, skip it`);
-        continue;
-      }
-
-      let timesLeft = 3;
-      let content;
-
-      do{
-        log4.info(`crawl using ${provider.name}`);
-        try{
-          content = await provider.crawl(code, args);
-          break;
-        } catch(e){
-          log4.error(e);
-          log4.info('will try later...');
-          await utils.sleep(5);
-          timesLeft--;
-        }
-      } while(timesLeft > 0);
-
-      if(!content){
-        throw new Error('Crawled content is empty ');
-      }
-
-      fundData.content[provider.name] = content;
+  for(const provider of providers){
+    if(isDisabledProvider(provider)){
+      log.info(`provider ${provider.name} is disabled in config, skip it`);
+      continue;
     }
 
-    log.info(`writing to ${code}.json`);
+    log.info(`login to ${provider.name}`);
 
-    await writeToFile(SAVE_DIR, `${code}.json`, JSON.stringify(fundData, null, 2));
+    if(provider.login && _.isFunction(provider.login)){
+      await provider.login(args);
+    }
   }
 
   await browser.close();

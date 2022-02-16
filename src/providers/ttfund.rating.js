@@ -35,7 +35,7 @@ async function extract(content, options){
 
   const table = $('#fundgradetable');
 
-  const row = [];
+  const row = [0, 0, 0, 0];
 
   const trs = table.find('tbody tr');
 

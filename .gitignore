@@ -1,6 +1,8 @@
 # project itself
 results
+results*
 config.js
+auth.json
 # Logs
 logs
 *.log

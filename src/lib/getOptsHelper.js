@@ -161,7 +161,7 @@ function validate(args, defs){
 
         break;
       case Boolean:
-        args[def.name] = args[def.name] == 'true';
+        // args[def.name] = args[def.name] == 'true';
         break;
       case Date:
         args[def.name] = moment.utc(args[def.name]);

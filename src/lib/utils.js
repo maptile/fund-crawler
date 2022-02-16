@@ -221,6 +221,12 @@ function strPercentageToNumber(str){
   return Math.round(num * 100) / 10000;
 }
 
+function strPercentageValueToNumber(str){
+  const num = parseFloat(str);
+
+  return Math.round(num * 100) / 10000;
+}
+
 function strToNumber(str){
   const numberRegex = new RegExp(/-{0,1}\d*\.{0,1}\d+/);
 
@@ -258,6 +264,14 @@ function isOlderThan6Months(strDate){
   return false;
 }
 
+function isDisabledProvider(config, provider){
+  const disabledProviders = _.get(config, ['providerSettings', 'disable'], []);
+
+  return _.some(disabledProviders, (disabled) => {
+    return provider.name.startsWith(disabled);
+  });
+}
+
 module.exports = {
   confirm,
   howManyYears,
@@ -268,7 +282,9 @@ module.exports = {
   sleep,
   sliceDays,
   strPercentageToNumber,
+  strPercentageValueToNumber,
   strTimeSpanToYears,
   strToDate,
   strToNumber,
+  isDisabledProvider,
 };
